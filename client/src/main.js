@@ -2,6 +2,7 @@
 
 let gameOver = false
 let score = 0
+let sessionId = null
 const main = {
     key: 'main',
     /**
@@ -21,6 +22,7 @@ const main = {
      * 游戏素材放入画面中，注册事件，设定动画效果等
      */
     create: function () {
+
         // 场景添加天空
         this.add.image(400, 300, 'sky')
         // 增加静态物理组，不会受到重力影响，发生碰撞时也不会移动，如墙壁等
@@ -40,7 +42,7 @@ const main = {
 
 
         // 设置角色动画
-        this.anims.create({
+        const leftAnim = this.anims.create({
             key: 'left',
             // 此动画的所有帧，当前设置了0～3帧
             // 即： 
@@ -55,13 +57,13 @@ const main = {
             repeat: -1
         })
 
-        this.anims.create({
+        const turnAnim = this.anims.create({
             key: 'turn',
             frames: [{ key: 'dude', frame: 4 }],
             frameRate: 20
         })
 
-        this.anims.create({
+        const rightAnim = this.anims.create({
             key: 'right',
             frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
             frameRate: 10,
@@ -102,7 +104,63 @@ const main = {
         this.bombs = this.physics.add.group()
         this.physics.add.collider(this.bombs, this.platforms)
         this.physics.add.collider(this.player, this.bombs, hitBomb, null, this)
+        // 监听 WebSocket 消息事件
+        socket.onmessage = (event) => {
+            // console.log(`WebSocket received message: ${event.data}`);
+            const data = JSON.parse(event.data)
+            // 发送消息到 WebSocket 服务器
+            // sendMsg('PLAYER_JOINED', sessionId)
+            if (data.event === 'LOGIN_RESULT') {
+                console.log('LOGIN SUCCESS!');
+                // 设置sessionId
+                sessionId = data.sessionId
+            }
+            if (data.event === 'PLAYER_JOINED') {
+                console.log('PLAYER_JOINED');
 
+                if (!onlinePlayers[data.sessionId]) {
+                    onlinePlayers[data.sessionId] = new OnlinePlayer({
+                        scene: this,
+                        platforms: this.platforms,
+                        playerId: data.sessionId,
+                        x: data.data.x,
+                        y: data.data.y,
+                        anims: [leftAnim, rightAnim, turnAnim]
+                    });
+                }
+            }
+            if (data.event === 'PLAYER_MOVED') {
+                // If player isn't registered in this scene
+                if (!onlinePlayers[data.sessionId]?.scene) {
+                    onlinePlayers[data.sessionId] = new OnlinePlayer({
+                        scene: this,
+                        playerId: data.sessionId,
+                        x: data.x,
+                        y: data.y,
+                        // todo
+                        anims: [leftAnim, rightAnim, turnAnim]
+                    });
+                }
+                // Start animation and set sprite position
+                onlinePlayers[data.sessionId]?.isWalking(data.data.position, data.data.x, data.data.y);
+            }
+            if (data.event === 'PLAYER_MOVEMENT_ENDED') {
+                // If player isn't registered in this scene
+                if (!onlinePlayers[data.sessionId]?.scene) {
+                    onlinePlayers[data.sessionId] = new OnlinePlayer({
+                        scene: this,
+                        playerId: data.sessionId,
+                        x: data.x,
+                        y: data.y,
+                        // todo
+                        anims: [leftAnim, rightAnim, turnAnim]
+                    });
+                }
+                // Start animation and set sprite position
+                onlinePlayers[data.sessionId]?.stopWalking();
+            }
+        };
+        sendMsg('LOGIN', null)
     },
     /**
      * 按照帧率，每秒执行update函数60次
@@ -110,24 +168,57 @@ const main = {
     update: function () {
         // 游戏结束则不执行
         if (gameOver) return
+
+        let position
         if (this.cursors.left.isDown) {
             // 设置速度
             this.player.setVelocityX(-160)
             // 播放之前设置的动画
             this.player.anims.play('left', true)
+            position = 'left'
+            // 发布位置
+            sendMsg(
+                'PLAYER_MOVED',
+                sessionId,
+                {
+                    x: this.player.x,
+                    y: this.player.y,
+                    position
+                }
+            )
         } else if (this.cursors.right.isDown) {
             this.player.setVelocityX(160)
 
             this.player.anims.play('right', true)
+            position = 'right'
+            // 发布位置
+            sendMsg(
+                'PLAYER_MOVED',
+                sessionId,
+                {
+                    x: this.player.x,
+                    y: this.player.y,
+                    position
+                }
+            )
         } else {
             this.player.setVelocityX(0)
 
             this.player.anims.play('turn')
         }
-        // 键盘按“下”，且角色底部有物理接触
+        // 键盘按“上”，且角色底部有物理接触
         if (this.cursors.up.isDown && this.player.body.touching.down) {
             this.player.setVelocityY(-330)
         }
+
+        // 松开左右键
+        if (Phaser.Input.Keyboard.JustUp(this.cursors.left) === true || Phaser.Input.Keyboard.JustUp(this.cursors.right) === true) {
+            sendMsg(
+                'PLAYER_MOVEMENT_ENDED',
+                sessionId
+            )
+        }
+
     }
 }
 
@@ -164,7 +255,7 @@ function hitBomb(player, bomb) {
     // gameOver = true
     setTimeout(() => {
         // 场景切换
-		this.scene.start('end')
-	}, 2000)
+        this.scene.start('end')
+    }, 2000)
 }
 

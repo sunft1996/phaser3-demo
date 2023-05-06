@@ -12,6 +12,8 @@
 
 <body>
     <div id="game"></div>
+    <script src="./src/socket.js"></script>
+    <script src="./src/onlinePlayer.js"></script>
     <script src="./src/main.js"></script>
     <script src="./src/end.js"></script>
     <script>
@@ -23,8 +25,9 @@
             parent: 'game',
             // 场景
             scene: [main, end],
-            // 物理系统
+            // 物理引擎
             physics: {
+                // 物理引擎可选
                 default: 'arcade',
                 arcade: {
                     // 设置重力y方向向下300
