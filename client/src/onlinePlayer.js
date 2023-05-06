@@ -24,17 +24,14 @@ class OnlinePlayer extends Phaser.GameObjects.Sprite {
     }
 
     isWalking(position, x, y) {
-        // Player
-        // todo: 改为position
-        this.anims.play('left', true);
+        this.anims.play(position, true);
         this.setPosition(x, y);
 
-        // PlayerId
         this.playerNickname.x = this.x - 40;
         this.playerNickname.y = this.y - 25;
     }
 
     stopWalking() {
-        this.anim.play('turn')
+        this.anims.play('turn')
     }
 }

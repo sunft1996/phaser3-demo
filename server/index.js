@@ -1,6 +1,6 @@
 // 引入 ws 模块
 const WebSocket = require('ws');
-
+const uuid = require('uuid');
 // 创建 WebSocket 服务器实例
 const wss = new WebSocket.Server({ port: 8080 });
 
@@ -10,7 +10,7 @@ const clients = new Map();
 // 监听连接事件
 wss.on('connection', (ws, req) => {
     console.log('WebSocket client connected');
-    const sessionId = Date.now()
+    const sessionId = uuid.v4()
     clients.set(sessionId, ws);
 
     // 广播

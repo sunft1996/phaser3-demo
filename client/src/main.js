@@ -165,42 +165,22 @@ const main = {
     /**
      * 按照帧率，每秒执行update函数60次
      */
-    update: function () {
+    update: function (time, delta) {
         // 游戏结束则不执行
         if (gameOver) return
 
-        let position
+        let position = 'turn'
         if (this.cursors.left.isDown) {
             // 设置速度
             this.player.setVelocityX(-160)
             // 播放之前设置的动画
             this.player.anims.play('left', true)
             position = 'left'
-            // 发布位置
-            sendMsg(
-                'PLAYER_MOVED',
-                sessionId,
-                {
-                    x: this.player.x,
-                    y: this.player.y,
-                    position
-                }
-            )
         } else if (this.cursors.right.isDown) {
             this.player.setVelocityX(160)
 
             this.player.anims.play('right', true)
             position = 'right'
-            // 发布位置
-            sendMsg(
-                'PLAYER_MOVED',
-                sessionId,
-                {
-                    x: this.player.x,
-                    y: this.player.y,
-                    position
-                }
-            )
         } else {
             this.player.setVelocityX(0)
 
@@ -211,8 +191,20 @@ const main = {
             this.player.setVelocityY(-330)
         }
 
-        // 松开左右键
-        if (Phaser.Input.Keyboard.JustUp(this.cursors.left) === true || Phaser.Input.Keyboard.JustUp(this.cursors.right) === true) {
+        // 发布位置
+        sendMsg(
+            'PLAYER_MOVED',
+            sessionId,
+            {
+                x: this.player.x,
+                y: this.player.y,
+                position
+            }
+        )
+
+        // 松开按键
+        if (Phaser.Input.Keyboard.JustUp(this.cursors.left) === true || Phaser.Input.Keyboard.JustUp(this.cursors.right) === true
+        || Phaser.Input.Keyboard.JustUp(this.cursors.up) === true) {
             sendMsg(
                 'PLAYER_MOVEMENT_ENDED',
                 sessionId
